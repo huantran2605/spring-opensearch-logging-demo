@@ -34,7 +34,7 @@ services:
     image: opensearchproject/logstash-oss-with-opensearch-output-plugin:latest
     container_name: logstash
     volumes:
-      - ./logstash/pipeline.conf:/usr/share/logstash/pipeline/pipeline.conf:ro
+      - ./logstash/pipeline.conf:/usr/share/logstash/pipeline/logstash.conf:ro
     ports:
       - "5044:5044"
     depends_on:
