@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: spring-ai-knowledge-base
+  
+  ai:
+    ollama:
+      base-url: http://localhost:11434 # Kết nối đến Ollama trên macOS
+      chat:
+        options:
+          model: llama3
+      embedding:
+        options:
+          model: nomic-embed-text
+          
+    vectorstore:
+      opensearch:
+        uris: http://localhost:9200
+        index-name: ai-knowledge-base
+        initialize-schema: true # Tự động tạo index và mapping k-NN nếu chưa có
+
+server:
+  port: 8080
