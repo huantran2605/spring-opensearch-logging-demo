@@ -1,113 +1,100 @@
-# Spring Boot OpenSearch Logging Demo
+# Spring Boot OpenSearch: Logging & Local AI (RAG)
 
-This project demonstrates a complete end-to-end logging pipeline using **Spring Boot**, **Logstash**, **OpenSearch**, and **OpenSearch Dashboards**. It shows how to capture logs in JSON format and send them over TCP to a centralized logging system for real-time analysis and visualization.
+This project is a high-performance demonstration of modern microservice patterns, combining **Centralized Logging** (ELK Stack) and an **AI Knowledge Base (RAG)** using Local LLMs.
 
 ## 🏗 Architecture
 
-The logging flow is as follows:
-1.  **Spring Boot App**: Uses `logback-spring.xml` with `LogstashTcpSocketAppender` to send JSON logs via TCP.
-2.  **Logstash**: Listens on port `5044`, receives JSON-encoded logs, and forwards them to OpenSearch.
-3.  **OpenSearch**: Stores and indexes the logs (daily indices: `spring-logs-YYYY.MM.dd`).
-4.  **OpenSearch Dashboards**: Provides a web UI to search, analyze, and visualize logs.
+The system consists of two primary pipelines:
+
+### 1. Logging Pipeline
+- **Spring Boot**: Sends structured JSON logs via TCP.
+- **Logstash**: Processes and forwards logs to OpenSearch.
+- **OpenSearch**: Indexes logs for real-time analysis.
+
+### 2. Local AI Knowledge Base (RAG)
+- **Spring AI + Ollama**: Uses `llama3` for chat and `nomic-embed-text` for vector embeddings.
+- **OpenSearch k-NN**: Acts as a high-performance Vector Database.
+- **Apache Tika**: Automatically parses PDFs, Word docs, and Markdown for ingestion.
 
 ```mermaid
-graph LR
-    A[Spring Boot] -- JSON/TCP (5044) --> B[Logstash]
-    B -- Indexing --> C[OpenSearch]
-    D[Dashboards] -- Query --> C
+graph TD
+    subgraph "Application Layer"
+        SB[Spring Boot Application]
+    end
+
+    subgraph "Logic & Intelligence"
+        SAI[Spring AI]
+        OLL[Ollama - Llama3/Nomic]
+    end
+
+    subgraph "Infrastructure"
+        LS[Logstash]
+        OS[(OpenSearch k-NN)]
+        DB[Dashboards]
+    end
+
+    SB -- "JSON Logs (5044)" --> LS
+    LS -- "Index" --> OS
+    SB -- "Query/Ingest" --> SAI
+    SAI -- "Embeddings/LLM" --> OLL
+    SAI -- "Vector Search" --> OS
+    DB -- "Visualize" --> OS
 ```
+
+---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Docker & Docker Compose
-- Java 17+
-- Maven 3.x
+- **Docker & Docker Compose**
+- **Java 21** & Maven 3.x
+- **Ollama**: [Download here](https://ollama.com/) and pull required models:
+  ```bash
+  ollama pull llama3
+  ollama pull nomic-embed-text
+  ```
 
 ### 1. Spin up Infrastructure
-Navigate to the `docker` directory and start the services:
-
 ```bash
-cd docker
-docker compose up -d
+docker compose -f docker/docker-compose.yml up -d
 ```
+Starts **OpenSearch** (9200), **Logstash** (5044), and **Dashboards** (5601).
 
-This will start:
-- **OpenSearch** (Port `9200`)
-- **Logstash** (Port `5044` for TCP logs)
-- **OpenSearch Dashboards** (Port `5601`)
-
-### 2. Run the Spring Boot Application
-Navigate to the `spring-boot-app` directory and run via Maven:
-
+### 2. Run the Application
 ```bash
 cd spring-boot-app
-mvn spring-boot:run
-```
-
-The application is configured to send logs to `localhost:5044` (Logstash).
-
-### 3. Generate Logs
-Use the following API endpoints to generate different log levels (INFO, WARN, ERROR):
-
-*   **Hello**: `GET http://localhost:8080/api/hello`
-*   **Product Demo**: `GET http://localhost:8080/api/product/{id}` (has random warnings and errors)
-*   **Order**: `POST http://localhost:8080/api/order`
-
-### 4. Verify in OpenSearch Dashboards
-1.  Open [http://localhost:5601](http://localhost:5601).
-2.  Go to **Management** > **Stack Management** > **Index Patterns**.
-3.  Create an index pattern for `spring-logs-*` with `@timestamp` as the time field.
-4.  Go to **Discover** to see your logs in real-time.
-
-### 📊 Dashboard Visualizations
-The project includes a guide to build a comprehensive dashboard with:
-*   **Log Count Over Time** (Area Chart): Monitor request volume.
-*   **Log Level Distribution** (Pie Chart): Breakdown of INFO vs WARN vs ERROR.
-*   **Top 10 Loggers** (Data Table): Identify which services generate the most noise.
-*   **Total Error Count** (Metric): Real-time counter of critical failures.
-
----
-
-## 🛠 Project Structure
-
-- `/docker`: Contains `docker-compose.yml` and Logstash pipeline configuration.
-- `/spring-boot-app`: A standard Spring Boot 3.x application.
-    - `src/main/resources/logback-spring.xml`: Configuration for Logstash appender.
-    - `src/main/java/.../DemoController.java`: Sample API to test logging.
-- `/done-phase`: Documented history of the project implementation phases.
-
-## 📝 Key Configurations
-
-### Logback JSON Formatting
-The application uses the `logstash-logback-encoder` to format logs as JSON, which is essential for structured logging:
-
-```xml
-<appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
-    <destination>localhost:5044</destination>
-    <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
-        <providers>
-            <timestamp/><logLevel/><loggerName/><threadName/><stackTrace/>
-        </providers>
-    </encoder>
-</appender>
-```
-
-### Logstash Pipeline
-Configured to receive JSON and output to OpenSearch:
-
-```text
-input {
-  tcp { port => 5044 codec => json_lines }
-}
-output {
-  opensearch {
-    hosts => ["http://opensearch:9200"]
-    index => "spring-logs-%{+YYYY.MM.dd}"
-  }
-}
+./mvnw spring-boot:run
 ```
 
 ---
 
-*This project was built as a demonstration of modern observability patterns in microservices.*
+## 📝 Features & API
+
+### 📊 Centralized Logging
+Capture structured logs automatically across all levels.
+- **Generate Log**: `GET http://localhost:8080/api/product/123`
+- **Visualize**: Open [http://localhost:5601](http://localhost:5601) and create an index pattern for `spring-logs-*`.
+
+### 🧠 AI Knowledge Base (RAG)
+Turn your documents into a searchable AI brain.
+- **Upload Knowledge** (PDF, DOCX, MD, TXT):
+  ```bash
+  curl -X POST -F "file=@your_doc.pdf" http://localhost:8080/api/knowledge/upload
+  ```
+- **Ask AI**:
+  ```bash
+  curl "http://localhost:8080/api/knowledge/ask?q=What+is+this+document+about?"
+  ```
+
+---
+
+## 🛠 Tech Stack
+- **Framework**: Spring Boot 3.5.0, Spring AI 1.0.0-M6
+- **Database**: OpenSearch (with k-NN plugin)
+- **AI/ML**: Ollama (Local execution)
+- **Logging**: Logstash, Logback-encoder
+- **Parsing**: Apache Tika
+
+---
+
+*This project demonstrates how to build observable and intelligent applications using 100% open-source and local tools.*
