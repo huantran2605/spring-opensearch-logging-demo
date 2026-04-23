@@ -2,21 +2,33 @@ spring:
   application:
     name: spring-ai-knowledge-base
   
-  ai:
+  ai: 
     ollama:
-      base-url: http://localhost:11434 # Kết nối đến Ollama trên macOS
+      base-url: http://host.docker.internal:11434 # Kết nối đến Ollama trên host qua Docker Bridge
       chat:
         options:
-          model: llama3
+          model: llama3.1
       embedding:
         options:
           model: nomic-embed-text
           
     vectorstore:
       opensearch:
-        uris: http://localhost:9200
+        uris: http://opensearch:9200
         index-name: ai-knowledge-base
         initialize-schema: true # Tự động tạo index và mapping k-NN nếu chưa có
 
+    # MCP Client - Kết nối đến Standalone OpenSearch MCP Server
+    mcp:
+      client:
+        sse:
+          connections:
+            opensearch-mcp:
+              url: http://opensearch-mcp:9900
+
 server:
   port: 8080
+
+logging:
+  level:
+    org.springframework.ai: DEBUG

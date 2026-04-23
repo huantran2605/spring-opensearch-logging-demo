@@ -11,32 +11,37 @@ The system consists of two primary pipelines:
 - **Logstash**: Processes and forwards logs to OpenSearch.
 - **OpenSearch**: Indexes logs for real-time analysis.
 
-### 2. Local AI Knowledge Base (RAG)
-- **Spring AI + Ollama**: Uses `llama3` for chat and `nomic-embed-text` for vector embeddings.
+### 2. Local AI & MCP Integration
+- **Spring AI + Ollama**: Uses `llama3.1` for chat and `nomic-embed-text` for vector embeddings.
+- **OpenSearch MCP Server**: A standalone Python server that provides AI tools to query OpenSearch directly (cluster health, index listing, log analysis).
 - **OpenSearch k-NN**: Acts as a high-performance Vector Database.
 - **Apache Tika**: Automatically parses PDFs, Word docs, and Markdown for ingestion.
 
+
 ```mermaid
-graph TD
-    subgraph "Application Layer"
-        SB[Spring Boot Application]
+flowchart TD
+    subgraph Application_Layer
+        SB["Spring Boot Application"]
     end
 
-    subgraph "Logic & Intelligence"
-        SAI[Spring AI]
-        OLL[Ollama - Llama3/Nomic]
+    subgraph Logic_Intelligence
+        SAI["Spring AI"]
+        OLL["Ollama - Llama3.1/Nomic"]
+        MCP["OpenSearch MCP Server"]
     end
 
-    subgraph "Infrastructure"
-        LS[Logstash]
-        OS[(OpenSearch k-NN)]
-        DB[Dashboards]
+    subgraph Infrastructure
+        LS["Logstash"]
+        OS["OpenSearch k-NN"]
+        DB["Dashboards"]
     end
 
     SB -- "JSON Logs (5044)" --> LS
     LS -- "Index" --> OS
     SB -- "Query/Ingest" --> SAI
     SAI -- "Embeddings/LLM" --> OLL
+    SAI -- "Tools (9900/SSE)" --> MCP
+    MCP -- "Query API" --> OS
     SAI -- "Vector Search" --> OS
     DB -- "Visualize" --> OS
 ```
@@ -50,7 +55,7 @@ graph TD
 - **Java 21** & Maven 3.x
 - **Ollama**: [Download here](https://ollama.com/) and pull required models:
   ```bash
-  ollama pull llama3
+  ollama pull llama3.1       # Required for MCP tool calling
   ollama pull nomic-embed-text
   ```
 
@@ -58,7 +63,7 @@ graph TD
 ```bash
 docker compose -f docker/docker-compose.yml up -d
 ```
-Starts **OpenSearch** (9200), **Logstash** (5044), and **Dashboards** (5601).
+Starts **OpenSearch**, **Logstash**, **Dashboards**, and **OpenSearch MCP Server** (9900).
 
 ### 2. Run the Application
 ```bash
@@ -77,13 +82,21 @@ Capture structured logs automatically across all levels.
 
 ### 🧠 AI Knowledge Base (RAG)
 Turn your documents into a searchable AI brain.
-- **Upload Knowledge** (PDF, DOCX, MD, TXT):
-  ```bash
-  curl -X POST -F "file=@your_doc.pdf" http://localhost:8080/api/knowledge/upload
-  ```
-- **Ask AI**:
+- **Upload Knowledge**: `POST http://localhost:8080/api/knowledge/upload` (multipart/form-data)
+- **Ask AI (RAG)**:
   ```bash
   curl "http://localhost:8080/api/knowledge/ask?q=What+is+this+document+about?"
+  ```
+
+### 🤖 AI System Admin (MCP)
+Ask the AI to perform administrative tasks on OpenSearch using natural language.
+- **Check Health**:
+  ```bash
+  curl "http://localhost:8080/api/mcp/chat?q=Is+the+cluster+healthy?"
+  ```
+- **List Indices**:
+  ```bash
+  curl "http://localhost:8080/api/mcp/chat?q=List+all+indices"
   ```
 
 ---
@@ -91,7 +104,7 @@ Turn your documents into a searchable AI brain.
 ## 🛠 Tech Stack
 - **Framework**: Spring Boot 3.5.0, Spring AI 1.0.0-M6
 - **Database**: OpenSearch (with k-NN plugin)
-- **AI/ML**: Ollama (Local execution)
+- **AI/ML**: Ollama (Local execution), MCP (Model Context Protocol)
 - **Logging**: Logstash, Logback-encoder
 - **Parsing**: Apache Tika
 
