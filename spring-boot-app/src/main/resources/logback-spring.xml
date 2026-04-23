@@ -9,6 +9,7 @@
                 <logLevel/>
                 <loggerName/>
                 <threadName/>
+                <message/>
                 <mdc/>
                 <arguments/>
                 <logstashMarkers/>

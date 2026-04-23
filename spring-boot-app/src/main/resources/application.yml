@@ -7,7 +7,7 @@ spring:
       base-url: http://host.docker.internal:11434 # Kết nối đến Ollama trên host qua Docker Bridge
       chat:
         options:
-          model: llama3.1
+          model: qwen2.5:7b
       embedding:
         options:
           model: nomic-embed-text
